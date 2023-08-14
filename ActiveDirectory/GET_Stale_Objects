@@ -1,0 +1,114 @@
+param(
+    [Switch]$User,
+    [Switch]$Computer,
+    [Switch]$Server,
+    [Switch]$IncludeExceptions,
+    [Switch]$Report
+)
+
+#Requires -Modules ActiveDirectory
+
+# Settings:
+$UserGracePeriod = 6 # Number of months of inactivity before the user is considered inactive
+$ServerGracePeriod = 6 # Number of months of inactivity before the server is considered inactive
+$ComputerGracePeriod = 6 # Number of months of inactivity before workstation/laptop is considered inactive
+
+$Today = Get-Date
+
+$UserExceptions = "Guest","DefaultAccount","krbtgt","Sync_" # Exceptions to the search. Either default accounts or sync accounts
+
+$User = $true
+$Computer = $true
+$Server = $true
+
+# Functions:
+function Show-Status{
+    Param(
+        [Parameter(Mandatory,Position=0)][ValidateSet("Info","Warning","Error")][String]$Type,
+        [Parameter(Mandatory,Position=1)][String]$Message
+        )
+        switch($Type){
+            "Info" {$param = @{Object = "`t[i] $Message"}}
+            "Warning" {$param = @{Object = "`t[!] $Message"; ForegroundColor = "Yellow"}}
+            "Error" {$param = @{Object = "`t[x] $Message"; ForegroundColor = "Red"}}
+        }
+        Write-Host @param
+}
+
+function Export-Report{
+    param(
+        [ValidateSet("User","WorkStation","Server")]$Scope,
+        $Data
+    )
+    $FilePath = "$PSScriptRoot\$(Get-Date -format yyyyMMdd)_$Domain`_$Scope.csv"
+    Export-Csv -Path $FilePath -NoTypeInformation
+    Show-Status Warning "$Scope report exported to: $FilePath"
+}
+
+# Code:
+Write-Host "`n`t___Initiating script___`n"
+
+try{
+    $Domain = (Get-ADDomain).Forest.Replace(".","_")
+    Show-Status Info "Domain detected: $($Domain.Replace("_","."))"
+}catch{
+    Show-Status Error "No domain detected. Aborting."
+    return
+}
+
+if(!$User -and !$Computer -and !$Server){
+    Show-Status Error "No options were chosen, ending the script."
+    return
+}
+
+if($User){
+    $Users = Get-ADUser -Filter * -Properties LastLogonDate,CanonicalName | Where-Object{$_.LastLogonDate -lt $Today.AddMonths(-$UserGracePeriod)}
+    if(!$IncludeExceptions){
+        $Users = $Users | Where-Object{$_.SamAccountName -notmatch ($UserExceptions -join "|")}
+    }
+    if($Users){
+        Show-Status Warning "$($Users.Count) user(s) found:"
+        $Users | Select-Object Name,SamAccountName,LastLogonDate,CanonicalName | Out-Host
+        if($Report){
+            Export-Report -Scope User -Data $Users
+        }
+    }else{
+        Show-Status Info "No users found."
+    }
+}
+if($Server -or $Computer){
+    $Devices = Get-ADComputer -Filter * -Properties LastLogonDate,OperatingSystem
+    $Workstations = $Devices | Where-Object{$_.OperatingSystem -notmatch "Server" -and $_.OperatingSystem -match "Windows"}
+    $Servers = (Compare-Object -ReferenceObject $Devices -DifferenceObject $Workstations).InputObject
+    if($Computer){
+        $ExpiredWS = $Workstations | Where-Object{$_.LastLogonDate -lt $Today.AddMonths(-$ComputerGracePeriod)}
+        if($ExpiredWS){
+            Show-Status Warning "$($ExpiredWS.Count) workstation(s) found:"
+            $ExpiredWS | Select-Object Name,LastLogonDate,OperatingSystem | Out-Host
+            if($Report){
+                # $FilePath = "$PSScriptRoot\$(Get-Date -format yyyyMMdd)_$Domain`_WorkSations.csv"
+                # $ExpiredWS | Export-Csv -Path $FilePath -NoTypeInformation
+                # Show-Status Warning "Workstation report exported to: $FilePath"
+                Export-Report -Scope WorkStation -Data $ExpiredWS
+            }
+        }else{
+            Show-Status Info "No workstations found."
+        }
+    }
+    if($Server){
+        $ExpiredServers = $Servers | Where-Object{$_.LastLogonDate -lt $Today.AddMonths(-$ServerGracePeriod)}
+        if($ExpiredServers){
+            Show-Status Warning "$($ExpiredServers.Count) server(s) found:"
+            $ExpiredServers | Select-Object Name,LastLogonDate,OperatingSystem | Out-Host
+            if($Report){
+                # $FilePath = "$PSScriptRoot\$(Get-Date -format yyyyMMdd)_$Domain`_Servers.csv"
+                # $ExpiredServers | Export-Csv -Path $FilePath -NoTypeInformation
+                # Show-Status Warning "Server report exported to: $FilePath"
+                Export-Report -Scope Server -Data $ExpiredServers
+            }
+        }else{
+            Show-Status info "No servers found."
+        }
+    }
+}
+Write-Host "`n`t___End script___`n"
