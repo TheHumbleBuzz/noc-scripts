@@ -7,3 +7,7 @@ Remove-Item -Path "$env:userprofile\Downloads\*" -Recurse -Force
 
 # For network locations, just put the full path
 Remove-Item -Path "\\networklocation*" -Recurse -Force
+
+# Empty Recycle Bin
+Clear-RecycleBin -Force
+
