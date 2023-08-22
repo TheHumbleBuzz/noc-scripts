@@ -4,6 +4,7 @@
 
 
  This is a work in progress of scripts that help our team daily.
+ A Majority of scripts are Python and Powershell
 
 
 
