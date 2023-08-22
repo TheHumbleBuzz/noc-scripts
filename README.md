@@ -12,7 +12,7 @@
 
 365Scripts (Mailbox size reports and other general tasks)
 
-ActiveDirectory
+ActiveDirectory (Get Stale Objects from AD. Log or Delete options)
 
 Internet-Speed-Test
 
