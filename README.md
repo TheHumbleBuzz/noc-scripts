@@ -10,7 +10,7 @@
 
 ## Key features
 
- 365Scripts
+365Scripts (Mailbox size reports and other general tasks)
 
 ActiveDirectory
 
