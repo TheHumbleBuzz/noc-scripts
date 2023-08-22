@@ -14,7 +14,7 @@
 
 ActiveDirectory (Get Stale Objects from AD. Log or Delete options)
 
-Internet-Speed-Test
+Internet-Speed-Test (General Speed test for workstations)
 
 Network Scanner
 
