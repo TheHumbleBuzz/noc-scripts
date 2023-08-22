@@ -9,7 +9,30 @@
 
 
 ## Key features
- 
+
+ 365Scripts
+
+ActiveDirectory
+
+Internet-Speed-Test
+
+Network Scanner
+
+Phonenumber Tracker
+
+Powershell
+
+Create DiskCleanup.ps1
+
+File_Rename.py
+
+Create File_Rename.py
+
+README.md
+
+empty-folders.py
+
+rename-files.py
 
 ## Legal notice
 
